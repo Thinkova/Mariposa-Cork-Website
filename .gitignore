@@ -1,0 +1,17 @@
+# Scratch/dev files
+scratch/
+
+# Large reference files
+*.pdf
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Design reference screenshots
+New design.png
+New design1.png
