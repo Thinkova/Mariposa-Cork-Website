@@ -13,7 +13,12 @@
   gsap.registerPlugin(ScrollTrigger);
 
   // ── Session Visit Caching Check ──
-  const isSubsequentVisit = sessionStorage.getItem('mariposa_loaded') === 'true';
+  const isReload = window.performance && window.performance.getEntriesByType &&
+                   window.performance.getEntriesByType('navigation')[0] &&
+                   window.performance.getEntriesByType('navigation')[0].type === 'reload';
+
+  // If it's a reload/refresh, treat it as a fresh visit so loader runs
+  const isSubsequentVisit = !isReload && sessionStorage.getItem('mariposa_loaded') === 'true';
 
   // ── Reduced motion check ──
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -116,29 +121,29 @@
       }
     });
 
-    // 1. Fade in and scale up the original logo & animate progress bar filling (2.0s)
+    // 1. Fade in and scale up the original logo & animate progress bar filling (1.5s)
     if (logoImg) {
       tl.to(logoImg, {
         opacity: 1,
         scale: 1.05,
-        duration: 2.0,
+        duration: 1.5,
         ease: 'power2.out',
       });
     }
     if (progressBar) {
       tl.to(progressBar, {
         scaleX: 1,
-        duration: 2.0,
+        duration: 1.5,
         ease: 'power1.inOut',
       }, 0);
     }
 
-    // 2. Smoothly fade out the loader overlay after a brief luxury hold (0.2s hold + 0.8s fade-out = 3.0s total)
+    // 2. Smoothly fade out the loader overlay (0.1s hold + 0.4s fade-out = 2.0s total)
     tl.to(overlay, {
       opacity: 0,
-      duration: 0.8,
+      duration: 0.4,
       ease: 'power2.inOut',
-    }, '+=0.2');
+    }, '+=0.1');
 
     sessionStorage.setItem('mariposa_loaded', 'true');
   }
@@ -151,14 +156,14 @@
     if (!header) return;
 
     const logo = header.querySelector('.brand-link');
-    const navItems = header.querySelectorAll('.nav-list li');
+    const navItems = header.querySelectorAll('.nav-list > li'); // Only direct children — dropdown sub-items must not be touched
 
     // Ensure logo is always visible
     if (logo) {
       gsap.set(logo, { opacity: 1, y: 0 });
     }
 
-    const tl = gsap.timeline({ delay: isSubsequentVisit ? 0.05 : 1.4 });
+    const tl = gsap.timeline({ delay: isSubsequentVisit ? 0.05 : 1.5 });
 
     if (logo) {
       gsap.set(logo, { opacity: 0, y: -25 });
@@ -242,7 +247,7 @@
     prepareHeadline();
 
     // Trigger sequential rollup on load
-    gsap.delayedCall(isSubsequentVisit ? 0.05 : 1.5, () => {
+    gsap.delayedCall(isSubsequentVisit ? 0.05 : 1.6, () => {
       triggerHeadlineEntrance();
     });
 
@@ -295,7 +300,7 @@
       duration: 0.8,
       stagger: 0.25,
       ease: 'power3.out',
-      delay: isSubsequentVisit ? 0.1 : 2.2,
+      delay: isSubsequentVisit ? 0.1 : 2.0,
     });
   }
 
@@ -527,7 +532,7 @@
       });
     }
 
-    // Team cards
+    // Team cards (old grid — kept for fallback)
     const teamCards = document.querySelectorAll('.team-card');
     if (teamCards.length) {
       gsap.set(teamCards, { y: 60, opacity: 0, scale: 0.95 });
@@ -802,7 +807,7 @@
       gsap.set(floatBook, { y: 80, opacity: 0 });
       gsap.to(floatBook, {
         y: 0, opacity: 1,
-        duration: 0.8, ease: 'back.out(1.5)', delay: isSubsequentVisit ? 0.15 : 2.4,
+        duration: 0.8, ease: 'back.out(1.5)', delay: isSubsequentVisit ? 0.15 : 2.1,
       });
     }
 
@@ -810,7 +815,128 @@
       gsap.set(floatCall, { y: 80, opacity: 0 });
       gsap.to(floatCall, {
         y: 0, opacity: 1,
-        duration: 0.8, ease: 'back.out(1.5)', delay: isSubsequentVisit ? 0.15 : 2.3,
+        duration: 0.8, ease: 'back.out(1.5)', delay: isSubsequentVisit ? 0.15 : 2.0,
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  TEAM SPLIT SECTION — CINEMATIC REVEAL
+  // ══════════════════════════════════════════════════════════
+  function initTeamSplitReveal() {
+    const imageFrame = document.querySelector('.team-image-frame');
+    const contentSide = document.querySelector('.team-split-content');
+    if (!imageFrame && !contentSide) return;
+
+    // Image slides in from left
+    if (imageFrame) {
+      gsap.set(imageFrame, { x: -80, opacity: 0, scale: 0.95 });
+      ScrollTrigger.create({
+        trigger: '.team-split',
+        start: 'top 80%',
+        animation: gsap.to(imageFrame, {
+          x: 0, opacity: 1, scale: 1,
+          duration: 1.1, ease: 'power3.out',
+        }),
+        toggleActions: 'play none none reset',
+      });
+    }
+
+    // Content children stagger in from right
+    if (contentSide) {
+      const children = Array.from(contentSide.children);
+      gsap.set(children, { x: 60, opacity: 0 });
+      ScrollTrigger.create({
+        trigger: '.team-split',
+        start: 'top 78%',
+        animation: gsap.to(children, {
+          x: 0, opacity: 1,
+          duration: 0.8, stagger: 0.1, ease: 'power3.out',
+        }),
+        toggleActions: 'play none none reset',
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  WHY CHOOSE US — STAGGER CARD REVEAL + TRUST COUNTER
+  // ══════════════════════════════════════════════════════════
+  function initWCUReveal() {
+    // Header fade-up
+    const wcuHeader = document.querySelector('.wcu-header');
+    if (wcuHeader) {
+      const kids = Array.from(wcuHeader.children);
+      gsap.set(kids, { y: 40, opacity: 0 });
+      ScrollTrigger.create({
+        trigger: wcuHeader,
+        start: 'top 85%',
+        animation: gsap.to(kids, {
+          y: 0, opacity: 1,
+          duration: 0.8, stagger: 0.15, ease: 'power3.out',
+        }),
+        toggleActions: 'play none none reset',
+      });
+    }
+
+    // Cards stagger up + scale from 0.92
+    const wcuCards = document.querySelectorAll('.wcu-card');
+    if (wcuCards.length) {
+      gsap.set(wcuCards, { y: 70, opacity: 0, scale: 0.93 });
+      ScrollTrigger.create({
+        trigger: '.wcu-grid',
+        start: 'top 82%',
+        animation: gsap.to(wcuCards, {
+          y: 0, opacity: 1, scale: 1,
+          duration: 0.75, stagger: 0.14, ease: 'power3.out',
+        }),
+        toggleActions: 'play none none reset',
+      });
+    }
+
+    // Trust numbers count up
+    const trustNumbers = document.querySelectorAll('.trust-number');
+    trustNumbers.forEach((el) => {
+      const text = el.textContent.trim();
+      const numMatch = text.match(/(\d+)/);
+      if (!numMatch) {
+        // Non-numeric (e.g. "Cork's") — just fade in
+        gsap.set(el, { opacity: 0, y: 20 });
+        ScrollTrigger.create({
+          trigger: el,
+          start: 'top 90%',
+          animation: gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }),
+          toggleActions: 'play none none reset',
+        });
+        return;
+      }
+      const target = parseInt(numMatch[1], 10);
+      const prefix = text.slice(0, numMatch.index);
+      const suffix = text.slice(numMatch.index + numMatch[1].length);
+      const obj = { val: 0 };
+      ScrollTrigger.create({
+        trigger: el,
+        start: 'top 88%',
+        animation: gsap.to(obj, {
+          val: target,
+          duration: 1.8, ease: 'power2.out',
+          onUpdate: () => { el.textContent = prefix + Math.round(obj.val) + suffix; },
+        }),
+        toggleActions: 'play none none reset',
+      });
+    });
+
+    // Trust labels fade in
+    const trustLabels = document.querySelectorAll('.trust-label');
+    if (trustLabels.length) {
+      gsap.set(trustLabels, { opacity: 0, y: 10 });
+      ScrollTrigger.create({
+        trigger: '.wcu-trust-bar',
+        start: 'top 88%',
+        animation: gsap.to(trustLabels, {
+          opacity: 1, y: 0,
+          duration: 0.6, stagger: 0.1, ease: 'power2.out',
+        }),
+        toggleActions: 'play none none reset',
       });
     }
   }
@@ -851,7 +977,7 @@
     const mainTitle = heroSection.querySelector('.main-title');
     const intro = heroSection.querySelector('.section-intro');
 
-    const tl = gsap.timeline({ delay: isSubsequentVisit ? 0.05 : 1.4 });
+    const tl = gsap.timeline({ delay: isSubsequentVisit ? 0.05 : 1.5 });
 
     if (subTitle) {
       gsap.set(subTitle, { y: 30, opacity: 0 });
@@ -1091,6 +1217,10 @@
     initSectionReveals();
     initCardReveals();
     initCardImageParallax();
+
+    // Team split + Why Choose Us
+    initTeamSplitReveal();
+    initWCUReveal();
 
     // Reviews
     initCounterAnimation();
