@@ -72,23 +72,37 @@
     return element.querySelectorAll('.split-word');
   }
 
-  // ── Utility: Split text into character spans ──
+  // ── Utility: Split text into character spans (grouped by words to prevent vertical wrapping) ──
   function splitIntoChars(element) {
-    const text = element.textContent;
+    const text = element.textContent.trim();
+    const words = text.split(/\s+/).filter(w => w.length > 0);
     element.innerHTML = '';
     const chars = [];
-    for (let i = 0; i < text.length; i++) {
-      const span = document.createElement('span');
-      span.className = 'split-char';
-      span.style.display = 'inline-block';
-      if (text[i] === ' ') {
-        span.innerHTML = '&nbsp;';
-      } else {
-        span.textContent = text[i];
+    words.forEach((wordText, wIdx) => {
+      const wordSpan = document.createElement('span');
+      wordSpan.className = 'split-word';
+      wordSpan.style.display = 'inline-block';
+      wordSpan.style.whiteSpace = 'nowrap';
+      
+      for (let i = 0; i < wordText.length; i++) {
+        const charSpan = document.createElement('span');
+        charSpan.className = 'split-char';
+        charSpan.style.display = 'inline-block';
+        charSpan.textContent = wordText[i];
+        wordSpan.appendChild(charSpan);
+        chars.push(charSpan);
       }
-      element.appendChild(span);
-      chars.push(span);
-    }
+      
+      element.appendChild(wordSpan);
+      
+      if (wIdx < words.length - 1) {
+        const spaceSpan = document.createElement('span');
+        spaceSpan.className = 'split-space';
+        spaceSpan.style.display = 'inline-block';
+        spaceSpan.innerHTML = '&nbsp;';
+        element.appendChild(spaceSpan);
+      }
+    });
     return chars;
   }
 

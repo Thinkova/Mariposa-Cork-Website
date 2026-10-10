@@ -76,6 +76,14 @@ html.lenis body {
   will-change: transform, opacity;
 }
 
+.split-word {
+  white-space: nowrap;
+}
+
+.split-space {
+  display: inline-block;
+}
+
 /* === CTA GRADIENT WIPE === */
 .cta-section h2 {
   background-image: linear-gradient(90deg, #f6f0e9 50%, rgba(246, 240, 233, 0.25) 50%);
